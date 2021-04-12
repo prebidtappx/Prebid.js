@@ -124,15 +124,12 @@ function interpretBannerBid(serverBid, request) {
     netRevenue: true,
   }
 
-  if (serverBid.video) {
-    utils.logMessage('--- VIDEO');
+  if (request.bids.mediaTypes.video) {
     bidReturned.vastXml = serverBid.adm;
     bidReturned.vastUrl = serverBid.lurl;
     bidReturned.ad = serverBid.adm;
     bidReturned.mediaType = VIDEO;
-  }
-  if (serverBid.banner) {
-    utils.logMessage('--- BANNER');
+  } else {
     bidReturned.ad = serverBid.adm;
     bidReturned.mediaType = BANNER;
   }
@@ -311,15 +308,9 @@ function buildOneRequest(validBidRequests, bidderRequest) {
   payload.regs = regs;
   // < Payload
 
-  let url = 'https://' + HOST + '/' + ENDPOINT + '?type_cnn=' + TYPE_CNN + '&v=' + TAPPX_BIDDER_VERSION + '';
-
-  utils.logMessage('--------------------------------------');
-  utils.logMessage(url);
-
   return {
     method: 'POST',
-    // url: `https://${HOST}/${ENDPOINT}?type_cnn=${TYPE_CNN}&v=${TAPPX_BIDDER_VERSION}`,
-    url: url,
+    url: `https://${HOST}/${ENDPOINT}?type_cnn=${TYPE_CNN}&v=${TAPPX_BIDDER_VERSION}`,
     data: JSON.stringify(payload),
     bids: validBidRequests
   };

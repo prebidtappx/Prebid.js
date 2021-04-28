@@ -10,7 +10,7 @@ const TTL = 360;
 const CUR = 'USD';
 const TAPPX_BIDDER_VERSION = '0.1.10413';
 const TYPE_CNN = 'prebidjs';
-const VIDEO_SUPPORT = ['instream'];
+const VIDEO_SUPPORT = ['instream', 'outstream'];
 
 var HOST;
 var hostDomain;

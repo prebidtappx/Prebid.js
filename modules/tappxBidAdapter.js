@@ -4,6 +4,7 @@ import * as utils from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, VIDEO } from '../src/mediaTypes.js';
 import { config } from '../src/config.js';
+import { Renderer } from '../src/Renderer.js';
 
 const BIDDER_CODE = 'tappx';
 const TTL = 360;
@@ -11,6 +12,7 @@ const CUR = 'USD';
 const TAPPX_BIDDER_VERSION = '0.1.10420';
 const TYPE_CNN = 'prebidjs';
 const VIDEO_SUPPORT = ['instream', 'outstream'];
+const RENDERER_URL = 'https://acdn.adnxs.com/video/outstream/ANOutstreamVideo.js';
 
 var HOST;
 var hostDomain;
@@ -149,11 +151,20 @@ function interpretBid(serverBid, request) {
 
   if (typeof serverBid.dealId != 'undefined') { bidReturned.dealId = serverBid.dealId }
 
-  if (typeof request.bids.mediaTypes != 'undefined' && typeof request.bids.mediaTypes.video != 'undefined') {
+  if (
+    typeof request.bids.mediaTypes != 'undefined' &&
+    typeof request.bids.mediaTypes.video != 'undefined'
+  ) {
     bidReturned.vastXml = serverBid.adm;
     bidReturned.vastUrl = serverBid.lurl;
     bidReturned.ad = serverBid.adm;
     bidReturned.mediaType = VIDEO;
+    bidReturned.width = serverBid.w;
+    bidReturned.height = serverBid.h;
+
+    if (request.bids.mediaTypes.video.context === 'outstream') {
+      bidReturned.renderer = createRenderer(bidReturned, request);
+    }
   } else {
     bidReturned.ad = serverBid.adm;
     bidReturned.mediaType = BANNER;
@@ -395,6 +406,35 @@ function getHostInfo(hostParam) {
   }
 
   return domainInfo;
+}
+
+function outstreamRender(bid, request) {
+  bid.renderer.push(() => {
+    window.ANOutstreamVideo.renderAd({
+      sizes: [bid.width, bid.height],
+      targetId: bid.adUnitCode,
+      adResponse: bid.adResponse,
+      rendererOptions: {
+        content: bid.vastXml
+      }
+    });
+  });
+}
+
+function createRenderer(bid, request) {
+  const rendererInst = Renderer.install({
+    id: request.bids.adUnitCode,
+    url: RENDERER_URL,
+    loaded: false
+  });
+
+  try {
+    rendererInst.setRender(outstreamRender);
+  } catch (err) {
+    utils.logWarn('Prebid Error calling setRender on renderer', err);
+  }
+
+  return rendererInst;
 }
 
 registerBidder(spec);

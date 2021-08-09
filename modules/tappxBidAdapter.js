@@ -12,7 +12,7 @@ const CUR = 'USD';
 const TAPPX_BIDDER_VERSION = '0.1.10714';
 const TYPE_CNN = 'prebidjs';
 const LOG_PREFIX = '[TAPPX]: ';
-const VIDEO_SUPPORT = ['instream'];
+const VIDEO_SUPPORT = ['instream','outstream'];
 
 const DATA_TYPES = {
   'NUMBER': 'number',
@@ -206,9 +206,15 @@ function interpretBid(serverBid, request) {
     bidReturned.mediaType = VIDEO;
     bidReturned.width = serverBid.w;
     bidReturned.height = serverBid.h;
+    
 
     if (request.bids.mediaTypes.video.context === 'outstream') {
-      bidReturned.renderer = createRenderer(bidReturned, request);
+      const url = (serverBid.ext.purl) ? serverBid.ext.purl : false;
+      if(!url) {
+        utils.logWarn(LOG_PREFIX, 'Currency not valid. Use only USD with Tappx.');
+        return false;
+      }
+      bidReturned.renderer = createRenderer(bidReturned, request, url);
     }
   } else {
     bidReturned.ad = serverBid.adm;
@@ -352,7 +358,8 @@ function buildOneRequest(validBidRequests, bidderRequest) {
   bidder.endpoint = ENDPOINT;
   bidder.host = hostInfo.url;
   bidder.bidfloor = BIDFLOOR;
-  bidder.ext = (typeof BIDEXTRA == 'object') ? BIDEXTRA : undefined;
+  //bidder.ext = (typeof BIDEXTRA == 'object') ? BIDEXTRA : undefined;
+ 
 
   imp.ext = {};
   imp.ext.bidder = bidder;
@@ -420,6 +427,10 @@ function buildOneRequest(validBidRequests, bidderRequest) {
   payloadExt.bidder.mktag = MKTAG;
   payloadExt.bidder.bcid = utils.deepAccess(validBidRequests, 'params.bcid');
   payloadExt.bidder.bcrid = utils.deepAccess(validBidRequests, 'params.bcrid');
+  payloadExt.bidder.ext = (typeof BIDEXTRA == 'object') ? BIDEXTRA : {};
+  if(videoMediaType.context) {
+    payloadExt.bidder.ext.pbvidtype = videoMediaType.context
+  }
   // < Payload Ext
 
   // > Payload
@@ -529,6 +540,36 @@ export function _extractPageUrl(validBidRequests, bidderRequest) {
   }
 
   return domainUrl;
+}
+//Outstream functions
+function outstreamRender(bid, request) {
+  bid.renderer.push(() => {
+    window.tappxOutstream.renderAd({
+      sizes: [bid.width, bid.height],
+      targetId: bid.adUnitCode,
+      adResponse: bid.adResponse,
+      rendererOptions:
+       {
+        content: bid.vastXml
+      }
+    });
+  });
+}
+
+function createRenderer(bid, request, url) {
+  const rendererInst = Renderer.install({
+    id: request.id,
+    url: url,
+    loaded: false
+  });
+
+  try {
+    rendererInst.setRender(outstreamRender);
+  } catch (err) {
+    utils.logWarn('Prebid Error calling setRender on renderer', err);
+  }
+
+  return rendererInst;
 }
 
 registerBidder(spec);

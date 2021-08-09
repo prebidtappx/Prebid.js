@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Prebid.js video adUnit example</title>
+
+  <script async src="../../build/dev/prebid.js"></script>
+
+<!--AdPlayer.Pro code-->
+<!-- <script src="https://static.adplayer.pro/player/demo.js"></script> -->
+<script>
+	/* our app where we run player
+   our app variables */
+		var pbjs;
+		pbjs = pbjs || {};
+		pbjs.que = pbjs.que || [];
+		var debug = false;
+		if (typeof window.console === 'undefined' || typeof window.console.log === 'undefined' || typeof window.console.dir === 'undefined') {
+		  debug = false;
+		}
+		//var videoId = 'video-ad-div';
+
+		/* Prebid video ad unit
+		   This is a working example but you must use your own settings/bidders for production
+		   More docs at https://prebid.org/prebid-video/video-overview.html */
+       var adUnits = [
+        {
+            code: 'video2', //This is important
+            mediaTypes: {
+                video: {
+                    playerSize: [640, 480],
+                    context: "outstream",
+                    mimes : [ "video/mp4", "application/javascript" ]
+                }
+            },
+            bids: [{
+                bidder: 'tappx',
+                params: {
+                    host: "testing.ssp.tappx.com/rtb/v2/",
+                    tappxkey: "pub-1234-desktop-1234",
+                    endpoint: "VZ12TESTCTV",
+                    bidfloor: 0.005,
+                    test: true
+                }
+            }]
+        }
+    ];
+    console.log("test.5")
+
+    pbjs.que.push(function() {
+        pbjs.addAdUnits(adUnits);
+        pbjs.requestBids({
+            timeout: 1000,
+            bidsBackHandler: function(bids) {
+              console.log(bids)
+                var highestCpmBids = pbjs.getHighestCpmBids('video2');
+                pbjs.renderAd(document, highestCpmBids[0].adId);
+            }
+        });
+    });
+</script>
+</head>
+<body>
+
+  <div id='video-ad-div'></div>
+  <div id='video2'></div>
+
+
+</body>
+</html>

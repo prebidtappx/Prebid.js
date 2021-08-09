@@ -4,7 +4,7 @@ import {config} from '../src/config.js';
 import * as utils from '../src/utils.js';
 
 const BIDDER_CODE = 'interactiveOffers';
-const ENDPOINT = 'https://rtb.ioadx.com/bidRequest/?partnerId=4a3bab187a74ac4862920cca864d6eff195ff5e4';
+const ENDPOINT = 'https://prebid.ioadx.com/bidRequest/?partnerId=4a3bab187a74ac4862920cca864d6eff195ff5e4';
 
 const DEFAULT = {
   'OpenRTBBidRequest': {},
@@ -74,6 +74,9 @@ function parseRequestPrebidjsToOpenRTB(prebidRequest) {
   let secure = (window.location.protocol == 'https:' ? 1 : 0);
   let openRTBRequest = JSON.parse(JSON.stringify(DEFAULT['OpenRTBBidRequest']));
   openRTBRequest.id = prebidRequest.auctionId;
+  openRTBRequest.ext = {
+    auctionstart: Date.now()
+  };
 
   openRTBRequest.site = JSON.parse(JSON.stringify(DEFAULT['OpenRTBBidRequestSite']));
   openRTBRequest.site.id = domain;
@@ -139,6 +142,16 @@ function parseResponseOpenRTBToPrebidjs(openRTBResponse) {
         prebid.ad = bid.adm;
         prebid.creativeId = bid.crid;
         prebid.cpm = bid.price;
+        prebid.width = bid.w;
+        prebid.height = bid.h;
+        prebid.mediaType = 'banner';
+        prebid.meta = {
+          advertiserDomains: bid.adomain,
+          advertiserId: bid.adid,
+          mediaType: 'banner',
+          primaryCatId: bid.cat[0] || '',
+          secondaryCatIds: bid.cat
+        }
         prebidResponse.push(prebid);
       });
     });

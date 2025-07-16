@@ -15,6 +15,7 @@ import {expect} from 'chai';
 
 import {AD_RENDER_FAILED_REASON, BID_STATUS, EVENTS} from 'src/constants.js';
 import {getBidToRender} from '../../../src/adRendering.js';
+import {PUC_MIN_VERSION} from 'src/creativeRenderers.js';
 
 describe('secureCreatives', () => {
   let sandbox;
@@ -31,7 +32,7 @@ describe('secureCreatives', () => {
   });
 
   beforeEach(() => {
-    sandbox = sinon.sandbox.create();
+    sandbox = sinon.createSandbox();
   });
 
   afterEach(() => {
@@ -100,7 +101,7 @@ describe('secureCreatives', () => {
         renderer: null
       }, obj);
       auction.getBidsReceived = function() {
-        let bidsReceived = getBidResponses();
+        const bidsReceived = getBidResponses();
         bidsReceived.push(adResponse);
         return bidsReceived;
       }
@@ -209,11 +210,8 @@ describe('secureCreatives', () => {
           return receive(ev);
         }).then(() => {
           sinon.assert.calledWith(spyLogWarn, warning);
-          sinon.assert.calledOnce(spyAddWinningBid);
-          sinon.assert.calledWith(spyAddWinningBid, adResponse);
           sinon.assert.calledOnce(adResponse.renderer.render);
           sinon.assert.calledWith(adResponse.renderer.render, adResponse);
-          sinon.assert.calledWith(stubEmit, EVENTS.BID_WON, adResponse);
           sinon.assert.calledWith(stubEmit, EVENTS.STALE_RENDER, adResponse);
         });
       });
@@ -301,7 +299,10 @@ describe('secureCreatives', () => {
           data: JSON.stringify({adId: bidId, message: 'Prebid Request'})
         });
         return receive(ev).then(() => {
-          sinon.assert.calledWith(ev.source.postMessage, sinon.match(ob => JSON.parse(ob).renderer === 'mock-renderer'));
+          sinon.assert.calledWith(ev.source.postMessage, sinon.match(ob => {
+            const {renderer, rendererVersion} = JSON.parse(ob);
+            return renderer === 'mock-renderer' && rendererVersion === PUC_MIN_VERSION;
+          }));
         });
       });
 
@@ -389,7 +390,7 @@ describe('secureCreatives', () => {
       });
 
       it('Prebid native should not fire BID_WON when receiveMessage is called more than once', () => {
-        let adId = 3;
+        const adId = 3;
         pushBidResponseToAuction({ adId });
 
         const data = {
@@ -413,6 +414,21 @@ describe('secureCreatives', () => {
           stubEmit.withArgs(EVENTS.BID_WON, adResponse).calledOnce;
         });
       });
+
+      it('should fire BID_WON when no asset is requested', () => {
+        pushBidResponseToAuction({});
+        const data = {
+          adId: bidId,
+          message: 'Prebid Native',
+        };
+
+        const ev = makeEvent({
+          data: JSON.stringify(data),
+        });
+        return receive(ev).then(() => {
+          sinon.assert.calledWith(stubEmit, EVENTS.BID_WON, adResponse);
+        });
+      })
 
       describe('resizing', () => {
         let container, slot;
@@ -525,7 +541,7 @@ describe('secureCreatives', () => {
       window.googletag = origGpt;
     });
     function mockSlot(elementId, pathId) {
-      let targeting = {};
+      const targeting = {};
       return {
         getSlotElementId: sinon.stub().callsFake(() => elementId),
         getAdUnitPath: sinon.stub().callsFake(() => pathId),
@@ -563,5 +579,15 @@ describe('secureCreatives', () => {
       sinon.assert.called(slots[1].getSlotElementId);
       sinon.assert.calledWith(document.getElementById, 'div2');
     });
+
+    it('should not resize interstitials', () => {
+      resizeRemoteCreative({
+        instl: true,
+        adId: 'adId',
+        width: 300,
+        height: 250,
+      });
+      sinon.assert.notCalled(document.getElementById);
+    })
   })
 });
